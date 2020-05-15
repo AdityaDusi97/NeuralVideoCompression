@@ -1,1 +1,5 @@
-This is the first commit.
+# Neural Video Compression
+
+## Requirement
+- Python (duh)
+- PyTorch ??
