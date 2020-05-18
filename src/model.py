@@ -45,9 +45,26 @@ class DecodeBlock(nn.Module):
     def forward(self, x):
         return self.block(x)
 
+class Binarize_bp(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        out = input.clone()
+        out[input < 0] = -1
+        out[input >= 0] = 1
+        return out
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input =  grad_output.clone()
+        grad_input[input < -1] = 0
+        grad_input[input >  1] = 0
+        return grad_input
+
 class Binarizer(nn.Module):
     def __init__(self):
-        block = [ nn.Hardtanh() ] # TODO: so how do we do binarization from here???
+        block = [ nn.Hardtanh() ]
         self.block = block
 
     def forward(self, x):
