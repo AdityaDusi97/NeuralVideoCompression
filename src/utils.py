@@ -34,6 +34,11 @@ def Video2Residual(readpath: str, savePath: str, quality: int = 1) -> None:
         print('Creating output directory')
     else:
         print('Rewriting output directory')
+    filePath = os.path.join(savePath, 'log.txt')
+    file = open(filePath, 'w+')
+    file.write("Source Video: " + readpath + "\n")
+    file.write("Quality: %d" %(quality))
+    file.close()
     while status:
         #pdb.set_trace()
         status, frame = video.read()
