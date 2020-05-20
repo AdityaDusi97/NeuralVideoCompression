@@ -6,6 +6,7 @@ import torchvision
 import numpy as np
 from torch.utils.data import DataLoader
 from model import Encoder, Decoder
+from utils import FrameLoader
 
 # params
 parser = argparse.ArgumentParser()
@@ -35,10 +36,6 @@ def train(models, dataset):
         models: a tuple with encoder and decoder
         dataset: some class that has an iterator for elements
     """
-
-    #### Setup
-    dataloader = Dataloader(dataset, batch_size=opt.batch_size, 
-                            shuffle=False, num_workers=8, drop_last=True)
     # for retraining
     if opt.checkpoint is not None:
         model.load_state_dict(torch.load(opt.checkpoint))    
@@ -61,7 +58,7 @@ def train(models, dataset):
     with torch.autograd.set_detect_anomaly(True):
         print('Beginning training...')
         for epoch in range(opt.start_epoch, opt.max_epoch):
-            for model_input in dataloader:
+            for idx, (model_input, _) in enumerate(dataset):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
                 bin_out = enc(model_input)
@@ -90,8 +87,6 @@ def test(models, dataset):
         dataset: some class that has an iterator for elements
     """
     #### Setup
-    dataloader = Dataloader(dataset, batch_size=opt.batch_size, 
-                            shuffle=False, num_workers=8, drop_last=True)
     if opt.checkpoint is not None:
         model.load_state_dict(torch.load(opt.checkpoint))
     else:
@@ -107,7 +102,7 @@ def test(models, dataset):
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper
     with torch.no_grad():
-        for idx, model_input in enumerate(dataloader):
+        for idx, (model_input, _) in enumerate(dataset):
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
             loss = criterion(model_input, rec_img)
@@ -117,13 +112,12 @@ def test(models, dataset):
 
 
 def main():
+    dataset = FrameLoader(opt.data_root)
     if opt.train_test == 'train':
-        dataset = #TODO: call iteratior like train class
         enc = Encoder()
         dec = Decoder()
         train((enc, dec), dataset)
-    elif opt.train_test == 'test'
-        dataset = #TODO: call iteratior like test class
+    elif opt.train_test == 'test':
         enc = Encoder()
         dec = Decoder()
         test((enc, dec), dataset)
