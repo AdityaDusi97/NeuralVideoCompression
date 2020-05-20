@@ -23,7 +23,8 @@ parser.add_argument('--max_epoch', type=int, default=200, help='number of epochs
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
 
 # for retraining
-parser.add_argument('--checkpoint', default=None, help='model to load')
+parser.add_argument('--checkpoint_enc', default=None, help='model to load')
+parser.add_argument('--checkpoint_dec', default=None, help='model to load')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
@@ -36,9 +37,11 @@ def train(models, dataset):
         models: a tuple with encoder and decoder
         dataset: some class that has an iterator for elements
     """
+    enc, dec = model
     # for retraining
-    if opt.checkpoint is not None:
-        model.load_state_dict(torch.load(opt.checkpoint))    
+    if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
+        enc.load_state_dict(torch.load(opt.checkpoint_enc))
+        dec.load_state_dict(torch.load(opt.checkpoint_dec))    
     dir_name = None # TODO: Add directory names
     # place to save checkpoints
     log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
@@ -47,7 +50,6 @@ def train(models, dataset):
     #TODO: Need to add stuff for tensorboard X
 
     ####  Deep learning part now
-    enc, dec = model
     enc.train()
     dec.train()
     optimizerE = torch.optim.Adam(enc.parameters(), lr=opt.lr)
@@ -87,13 +89,14 @@ def test(models, dataset):
         dataset: some class that has an iterator for elements
     """
     #### Setup
-    if opt.checkpoint is not None:
-        model.load_state_dict(torch.load(opt.checkpoint))
+    enc, dec = models
+    if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
+        enc.load_state_dict(torch.load(opt.checkpoint_enc))
+        dec.load_state_dict(torch.load(opt.checkpoint_dec))
     else:
         print("Have to give checkpoint!")
         return
     
-    enc, dec = models
     enc.eval()
     dec.eval()
 
