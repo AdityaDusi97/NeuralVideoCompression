@@ -5,8 +5,8 @@ from torch import nn
 import torchvision
 import numpy as np
 from torch.utils.data import DataLoader
-from model import Encoder, Decoder
-from utils import FrameLoader
+from .model import Encoder, Decoder
+from .utils import FrameLoader
 
 # params
 parser = argparse.ArgumentParser()
@@ -37,12 +37,12 @@ def train(models, dataset):
         models: a tuple with encoder and decoder
         dataset: some class that has an iterator for elements
     """
-    enc, dec = model
+    enc, dec = models
     # for retraining
     if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))    
-    dir_name = None # TODO: Add directory names
+    dir_name = opt.experiment_name + 'testlol' # TODO: Add directory names
     # place to save checkpoints
     log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
     if not os.path.exists(log_dir):
@@ -63,8 +63,11 @@ def train(models, dataset):
             for idx, (model_input, _) in enumerate(dataset):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
+                ### TODO tmp:
+                model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+                #############
                 bin_out = enc(model_input)
-                rec_img = dec(binout)
+                rec_img = dec(bin_out)
                 loss = criterion(model_input, rec_img)
                 loss.backward()
                 optimizerD.step()
@@ -100,7 +103,7 @@ def test(models, dataset):
     enc.eval()
     dec.eval()
 
-    dir_name = None #TODO: Fill in directory name
+    dir_name = 'test_result' #TODO: Fill in directory name
 
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper

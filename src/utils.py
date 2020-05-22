@@ -8,11 +8,20 @@ import torchvision
 
 # no labels
 
+def npy_loader(path):
+    sample = torch.from_numpy(np.load(path))
+    return sample
+
 def FrameLoader(data_path):
     #data_path = 'data/train/'
-    dataloader = torchvision.datasets.ImageFolder(
-        root=data_path,
-        transform=torchvision.transforms.ToTensor()
+    # dataloader = torchvision.datasets.ImageFolder(
+    #     root=data_path,
+    #     transform=torchvision.transforms.ToTensor()
+    # )
+    dataloader = torchvision.datasets.DatasetFolder(
+        root=data_path, loader=npy_loader, 
+        extensions=('.npy')
+        # transform=torchvision.transforms.ToTensor()
     )
     dataset = torch.utils.data.DataLoader(
         dataloader,
@@ -71,6 +80,16 @@ def Video2Residual(readpath: str, savePath: str, quality: int = 1) -> None:
         cv2.imwrite(saveName, residual)
     print('Wrote Frames')
 
+
+def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360)):
+    uc = cv2.imread(uncomp).astype(np.float32)
+    dc = cv2.imread(decomp).astype(np.float32)
+    uc = cv2.resize(uc, img_size).astype(np.int16)
+    dc = cv2.resize(dc, img_size).astype(np.int16) # to save space...
+    res = np.transpose((uc - dc), axes=(2,0,1))
+    name = (decomp.split('/')[-1]).split('.')[0]
+    np.save(os.path.join(out_dir, "{}.npz".format(name)), res) # TODO: save to pos/neg files seperately???
+    print("{}.npy saved to {}".format(name, out_dir))
 
 
 

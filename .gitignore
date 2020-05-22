@@ -2,3 +2,4 @@
 **/v_data
 .ipynb_checkpoints/
 **/__pycache__
+**/log

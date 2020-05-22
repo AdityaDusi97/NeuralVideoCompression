@@ -2,15 +2,17 @@
     Pytorch Implementation of: 
         Learning Binary Residual Representations for Domain-specific Video Streaming
 """
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from config import *
+from .config import Config
 
+config = Config()
 C = config.numChannels
 L = config.numLayers
-kz = config.kernel_size
+kz = config.kernelSize
 pad = int(kz / 2)
 
 class EncodeBlock(nn.Module):
@@ -22,7 +24,7 @@ class EncodeBlock(nn.Module):
         if activation:
             block += [nn.ReLU()]
 
-        self.block = nn.Sequential(*block)
+        self.block = nn.Sequential(*(block))
 
     def forward(self, x):
         return self.block(x)
@@ -37,7 +39,7 @@ class DecodeBlock(nn.Module):
                       nn.BatchNorm2d(C), 
                       nn.ReLU() ]
         else:
-            bolck = [ nn.Conv2d(out_channel, 4*out_channel, kz, stride=1, padding=pad),
+            block = [ nn.Conv2d(C, 4*out_channel, kz, stride=1, padding=pad),
                       nn.PixelShuffle(2)]
 
         self.block = nn.Sequential(*block)
@@ -70,17 +72,17 @@ class Binarizer(nn.Module):
     def forward(self, x):
         return self.block(x)
 
-class Encoder(nn.Modeule):
+class Encoder(nn.Module):
     def __init__(self, in_channel=3):
         super(Encoder, self).__init__()
 
-        block = ['encblk' + str(1), EncodeBlock(in_channel)]
+        block = [('encblk' + str(1), EncodeBlock(in_channel))]
         for i in range(1, L - 1):
-            block += ['encblk' + str(i+1), EncodeBlock(C)]
-        block += ['encblk' + str(L), EncodeBlock(C, activation=False)]
+            block += [('encblk' + str(i+1), EncodeBlock(C))]
+        block += [('encblk' + str(L), EncodeBlock(C, activation=False))]
 
-        self.block = block
-        self.binarizer = Binarizer()
+        self.block = nn.Sequential(OrderedDict(block))
+        self.binarizer = Binarize_bp.apply
 
     def forward(self, x):
         x = self.block(x)
@@ -88,14 +90,16 @@ class Encoder(nn.Modeule):
         return out
 
 
-class Decoder(nn.Modeule):
-    def __init__(self, out_channel):
+class Decoder(nn.Module):
+    def __init__(self, out_channel=3):
         super(Decoder, self).__init__()
         
-        block = ['decblk' + str(1), DecodeBlock(in_channel)]
+        block = [('decblk' + str(1), DecodeBlock())]
         for i in range(1, L - 1):
-            block += ['decblk' + str(i+1), DecodeBlock(C)]
-        block += ['decblk' + str(L), DecodeBlock(C, last_layer=True, out_channel=out_channel)]
+            block += [('decblk' + str(i+1), DecodeBlock())]
+        block += [('decblk' + str(L), DecodeBlock(last_layer=True, out_channel=out_channel))]
+
+        self.block = nn.Sequential(OrderedDict(block))
 
     def forward(self, x):
         return self.block(x)

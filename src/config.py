@@ -1,4 +1,6 @@
 # Model Configuration
-numLayers   = 3
-numChannels = 32
-kernelSize  = 3
+class Config():
+    def __init__(self):
+        self.numLayers   = 3
+        self.numChannels = 32
+        self.kernelSize  = 3
