@@ -6,7 +6,9 @@ import torchvision
 import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
-from .utils import FrameLoader
+from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
+
+from tensorboardX import SummaryWriter
 
 # params
 parser = argparse.ArgumentParser()
@@ -41,13 +43,16 @@ def train(models, dataset):
     # for retraining
     if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
-        dec.load_state_dict(torch.load(opt.checkpoint_dec))    
+        dec.load_state_dict(torch.load(opt.checkpoint_dec))  
+
     dir_name = opt.experiment_name + 'testlol' # TODO: Add directory names
+    
     # place to save checkpoints
     log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     #TODO: Need to add stuff for tensorboard X
+    writer = SummaryWriter()
 
     ####  Deep learning part now
     enc.train()
@@ -63,7 +68,7 @@ def train(models, dataset):
             for idx, (model_input, _) in enumerate(dataset):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
-                ### TODO tmp:
+                ### TODO: fix training data shape:
                 model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
                 #############
                 bin_out = enc(model_input)
@@ -73,6 +78,7 @@ def train(models, dataset):
                 optimizerD.step()
                 optimizerE.step()
                 print("Iter %07d   Epoch %03d   loss %0.4f" % (iter, epoch, loss))
+                writer.add_scalar('train_loss', loss.cpu().numpy(), global_step=iter)
                 iter +=1
                 if iter % 500 ==0:
                     torch.save(enc.state_dict(), os.path.join(log_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
@@ -109,16 +115,23 @@ def test(models, dataset):
     criterion = nn.MSELoss() # from paper
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
+            ### TODO: fix training data shape:
+            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            #############
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
+
+            ssim = getSSIMfromTensor(rec_img, model_input)
+            saveTensorToNpy(rec_img, 'test_rec')
+
             loss = criterion(model_input, rec_img)
             if not idx%10:
                 print(idx)
-                print("Iter %07d  loss %0.4f" % (idx, loss))
+                print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
 
 
 def main():
-    dataset = FrameLoader(opt.data_root)
+    dataset = FrameLoader(opt.data_root, opt.batch_size)
     if opt.train_test == 'train':
         enc = Encoder()
         dec = Decoder()

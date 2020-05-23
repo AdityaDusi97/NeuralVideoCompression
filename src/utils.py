@@ -6,26 +6,33 @@ import torch
 import torch.nn as nn
 import torchvision
 
+from skimage.metrics import structural_similarity as ssim # perhaps do our own later on lol
+
+
 # no labels
 
 def npy_loader(path):
     sample = torch.from_numpy(np.load(path))
     return sample
 
-def FrameLoader(data_path):
+def FrameLoader(data_path, batch_size=4):
+    # For image data
     #data_path = 'data/train/'
     # dataloader = torchvision.datasets.ImageFolder(
     #     root=data_path,
     #     transform=torchvision.transforms.ToTensor()
     # )
+
+    ### TODO: this is only for non-image data
     dataloader = torchvision.datasets.DatasetFolder(
         root=data_path, loader=npy_loader, 
         extensions=('.npy')
         # transform=torchvision.transforms.ToTensor()
     )
+    ### 
     dataset = torch.utils.data.DataLoader(
         dataloader,
-        batch_size=4,
+        batch_size=batch_size,
         num_workers=0,
         shuffle=False,
         drop_last=True
@@ -92,4 +99,20 @@ def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360)):
     print("{}.npy saved to {}".format(name, out_dir))
 
 
+def getSSIMfromTensor(tensor1, tensor2):
+    """
+        tensor1 and tensor2 are 1) 3 dim tensors or 2) 4 dim tensors with batchSize=1
+    """
+    img1 = np.transpose(np.squeeze(tensor1.cpu().numpy()), axes=(1,2,0))
+    img2 = np.transpose(np.squeeze(tensor2.cpu().numpy()), axes=(1,2,0))
 
+    return ssim(img1, img2,
+                data_range=img2.max() - img2.min(),
+                multichannel=True)
+
+def saveTensorToNpy(tensor, filename):
+    npy = tensor.cpu().numpy()
+    npy = np.transpose(np.squeeze(npy), axes=(1,2,0))
+    np.save(filename+'.npy', npy)
+
+    cv2.imwrite(filename+'.png', (npy*128 + 128).astype(int))
