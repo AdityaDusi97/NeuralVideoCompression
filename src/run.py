@@ -45,7 +45,7 @@ def train(models, dataset):
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))  
 
-    dir_name = opt.experiment_name + 'testlol' # TODO: Add directory names
+    dir_name = opt.experiment_name + 'test' # TODO: Add directory names
     
     # place to save checkpoints
     log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
@@ -78,7 +78,7 @@ def train(models, dataset):
                 optimizerD.step()
                 optimizerE.step()
                 print("Iter %07d   Epoch %03d   loss %0.4f" % (iter, epoch, loss))
-                writer.add_scalar('train_loss', loss.cpu().numpy(), global_step=iter)
+                writer.add_scalar('train_loss', loss.detach().numpy(), global_step=iter)
                 iter +=1
                 if iter % 500 ==0:
                     torch.save(enc.state_dict(), os.path.join(log_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
