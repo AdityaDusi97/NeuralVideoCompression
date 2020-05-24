@@ -4,4 +4,5 @@
 .ipynb_checkpoints/
 **/__pycache__
 **/test
+**/runs
 **/log
