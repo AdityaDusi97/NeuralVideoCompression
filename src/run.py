@@ -9,6 +9,7 @@ from .model import Encoder, Decoder
 from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
 
 from tensorboardX import SummaryWriter
+from .HuffmanCompression import HuffmanCoding
 
 # params
 parser = argparse.ArgumentParser()
@@ -51,7 +52,6 @@ def train(models, dataset):
     log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    #TODO: Need to add stuff for tensorboard X
     writer = SummaryWriter()
 
     ####  Deep learning part now
@@ -129,6 +129,96 @@ def test(models, dataset):
                 print(idx)
                 print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
 
+"""
+At test time, out pipeline should actually be split into two stages:
+ 1. 
+    a) Encode frames with h246 and get residual
+    b) Huffman compress residual
+ 
+ 2.
+    a) huffman decompress residual
+    b) Decode h246 frame and add residual back
+"""
+## VERY IMPORTANT ##
+# at test time, batch size should be one!
+def test_encode(enc, dataset):
+    if opt.checkpoint_enc is not None:
+        enc.load_state_dict(torch.load(opt.checkpoint_enc))
+    else:
+        print("Have to give checkpoint!")
+        return
+    enc.eval()
+
+    dir_name = 'test_encoded_frames'
+    # TODO: look into the path thing and all
+
+    print("Test Time encoding frames and getting residuals")
+    #criterion = nn.MSELoss()
+    residuals_path = os.path.join(dir_name, "residuals")
+    if not os.path.exists(residuals_path):
+        os.makedirs(residuals_path)
+    
+    residual_file = os.path.join(residuals_path, "residuals.txt")
+    output_file = open(residual_file, "w")
+
+    hCompressor = HuffmanCoding()
+    with torch.no_grad():
+        for idx, (model_input, _) in enumerate(dataset):
+            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            bin_out = enc(model_input).squeeze().cpu().numpy() # assuming batch dimension will get squeezed
+            
+            # convert it .txt file and then .bin for huffman
+            for row in bin_out:
+                np.savetxt(output_file, row)
+
+        # now, let's do huffman coding
+        hCompressor.compress(residual_file, residuals_path)
+        # saves things as residual.bin
+
+    print("Finished Huffman Coding residuals")
+    # I will also return dimensions as that will be useful at decode time
+    return bin_out.shape #tuple
+
+def test_decode(dec, dataset, bin_out_shape):
+    if opt.checkpoint_enc is not None:
+        dec.load_state_dict(torch.load(opt.checkpoint_dec))
+    else:
+        print("Have to give checkpoint!")
+        return
+    dec.eval()
+
+    dir_name = 'test_encoded_frames'
+    residuals_path = os.path.join(dir_name, "residuals")
+    if not os.path.exists(residuals_path):
+        print("File hasn't been encoded")
+        return
+        
+    hCompressor = HuffmanCoding()
+    residual_file = os.path.join(residuals_path, "residuals.bin")
+    hCompressor.decompress(residual_file, residuals_path)
+    residual_rec = os.path.join(residuals_path, "rec_residuals.txt")
+    rec_bin_out = torch.tensor(np.loadtxt(residual_file).reshape(-1, *bin_out_shape)) # all frames
+
+    dir_name = 'test_result'
+
+    criterion = nn.MSELoss() # from paper
+    with torch.no_grad():
+        for idx, (model_input, _) in enumerate(dataset):
+            ### TODO: fix training data shape:
+            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            #############
+            #bin_out = enc(model_input)
+            rec_img = dec(rec_bin_out[idx])
+
+            ssim = getSSIMfromTensor(rec_img, model_input)
+            saveTensorToNpy(rec_img, 'test_rec')
+
+            loss = criterion(model_input, rec_img)
+            if not idx%10:
+                print(idx)
+                print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
+
+
 
 def main():
     dataset = FrameLoader(opt.data_root, opt.batch_size)
@@ -140,6 +230,12 @@ def main():
         enc = Encoder()
         dec = Decoder()
         test((enc, dec), dataset)
+        ## This is the new function, will uncomment later
+        """
+        bin_out_shape = test_encode(enc, dataset)
+        test_decode(dec, dataset, bin_out_shape)
+        """
+
     else:
         print('Unknown Mode')
         return None
