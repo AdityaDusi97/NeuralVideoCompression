@@ -32,7 +32,7 @@ ffmpeg -i uncomp.mp4 -an -vcodec libx264 -crf 30 comp.h264
 
 # h264 decode
 ffmpeg -framerate 10 -i comp.h264 -vf "fieldorder=bff" decomp.mp4  
-
+- "fieldorder=bff": this is necessary so that our video won't quiver!
 
 # video to .png frames
 ffmpeg -i decomp.mp4 -framerate 10 -start_number 0 decomp/%03d.png
