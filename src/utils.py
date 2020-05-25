@@ -5,6 +5,7 @@ import pdb
 import torch 
 import torch.nn as nn
 import torchvision
+from glob import glob
 
 from skimage.metrics import structural_similarity as ssim # perhaps do our own later on lol
 
@@ -87,6 +88,30 @@ def Video2Residual(readpath: str, savePath: str, quality: int = 1) -> None:
         cv2.imwrite(saveName, residual)
     print('Wrote Frames')
 
+def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str)->None:
+    """
+    Function to go to a file and save residual
+    params:
+        uncomp: path to original frames
+        decomp: path to decompressed frames
+        out_dir: direcotry to save results in 
+        exp_name: experiment name
+    """
+    out_dir = os.path.join(out_dir, exp_name)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    uncomp_frames = sorted(glob(os.path.join(uncomp, '*.png')))
+    decomp_frames = sorted(glob(os.path.join(decomp, '*.png')))
+
+    # need some check to make sure we are only calculating between correct frames
+    limit = min(len(uncomp_frames), len(decomp_frames))
+
+    for idx in range(limit):
+        makeResidual(uncomp_frames[idx], decomp_frames[idx], out_dir)
+    
+    print("Written all frames")
+    
 
 def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360)):
     uc = cv2.imread(uncomp).astype(np.float32)
@@ -103,8 +128,8 @@ def getSSIMfromTensor(tensor1, tensor2):
     """
         tensor1 and tensor2 are 1) 3 dim tensors or 2) 4 dim tensors with batchSize=1
     """
-    img1 = np.transpose(np.squeeze(tensor1.cpu().numpy()), axes=(1,2,0))
-    img2 = np.transpose(np.squeeze(tensor2.cpu().numpy()), axes=(1,2,0))
+    img1 = np.transpose(np.squeeze(tensor1.cpu().numpy()))#, axes=(1,2,0))
+    img2 = np.transpose(np.squeeze(tensor2.cpu().numpy()))#, axes=(1,2,0))
 
     return ssim(img1, img2,
                 data_range=img2.max() - img2.min(),
@@ -112,7 +137,7 @@ def getSSIMfromTensor(tensor1, tensor2):
 
 def saveTensorToNpy(tensor, filename):
     npy = tensor.cpu().numpy()
-    npy = np.transpose(np.squeeze(npy), axes=(1,2,0))
+    npy = np.transpose(np.squeeze(npy))#, axes=(1,2,0))
     np.save(filename+'.npy', npy)
 
     cv2.imwrite(filename+'.png', (npy*128 + 128).astype(int))

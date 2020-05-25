@@ -7,6 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
 from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
+#import pdb
 
 from tensorboardX import SummaryWriter
 from .HuffmanCompression import HuffmanCoding
@@ -19,11 +20,15 @@ parser.add_argument('--train_test', type=str, required=True, help='mode')
 parser.add_argument('--data_root', required=True, help='path to directory of images')
 parser.add_argument('--logging_root', type=str, required=True,
                     help='path to save checkpoints')
+parser.add_argument('--checkpoint_dir', type=str, default="checkpoint", 
+                    help='path to directory with experiments checkpoints ')
 
 # train params
-parser.add_argument('--experiment_name', type=str, default='', help='name of experiment')
+parser.add_argument('--experiment_name', type=str, required=True, help='name of experiment')
 parser.add_argument('--max_epoch', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
+parser.add_argument('--lf', type=int, default=10, help='logging frequency')
+parser.add_argument('--sf', type=int, default=50, help='checkpoints saving frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -46,13 +51,18 @@ def train(models, dataset):
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))  
 
-    dir_name = opt.experiment_name + 'test' # TODO: Add directory names
+    dir_name = opt.experiment_name #+ 'train' # TODO: Add directory names
     
-    # place to save checkpoints
-    log_dir = os.path.join(opt.logging_root, 'logs', dir_name)
+    # place to save tensorboard logs
+    log_dir = os.path.join(opt.logging_root, dir_name)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    writer = SummaryWriter()
+    writer = SummaryWriter(os.path.join(log_dir, "train"))
+
+    # place to save checkpoints
+    ckpt_dir = os.path.join(opt.checkpoint_dir, opt.experiment_name)
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
 
     ####  Deep learning part now
     enc.train()
@@ -69,7 +79,7 @@ def train(models, dataset):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
                 ### TODO: fix training data shape:
-                model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+                model_input = model_input.type(torch.FloatTensor) / 255.0
                 #############
                 bin_out = enc(model_input)
                 rec_img = dec(bin_out)
@@ -77,17 +87,19 @@ def train(models, dataset):
                 loss.backward()
                 optimizerD.step()
                 optimizerE.step()
-                print("Iter %07d   Epoch %03d   loss %0.4f" % (iter, epoch, loss))
-                writer.add_scalar('train_loss', loss.detach().numpy(), global_step=iter)
+                if iter % opt.lf == 0:
+                    print("Iter %07d   Epoch %03d   loss %0.4f" % (iter, epoch, loss))
+                    writer.add_scalar('train_loss', loss.detach().numpy(), global_step=iter)
+
+                if iter % opt.sf ==0:
+                    torch.save(enc.state_dict(), os.path.join(ckpt_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
+                    torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))  
                 iter +=1
-                if iter % 500 ==0:
-                    torch.save(enc.state_dict(), os.path.join(log_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
-                    torch.save(dec.state_dict(), os.path.join(log_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))  
 
     #TODO: Need to complete the code here
     print("Finished Training")
-    torch.save(enc.state_dict(), os.path.join(log_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
-    torch.save(dec.state_dict(), os.path.join(log_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
+    torch.save(enc.state_dict(), os.path.join(ckpt_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
+    torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
 
 
 def test(models, dataset):
@@ -105,7 +117,7 @@ def test(models, dataset):
     else:
         print("Have to give checkpoint!")
         return
-    
+
     enc.eval()
     dec.eval()
 
@@ -116,11 +128,11 @@ def test(models, dataset):
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
             ### TODO: fix training data shape:
-            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            model_input = model_input.type(torch.FloatTensor) / 255.0
             #############
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
-
+            
             ssim = getSSIMfromTensor(rec_img, model_input)
             saveTensorToNpy(rec_img, 'test_rec')
 
@@ -164,7 +176,7 @@ def test_encode(enc, dataset):
     hCompressor = HuffmanCoding()
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
-            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 255.0
             bin_out = enc(model_input).squeeze().cpu().numpy() # assuming batch dimension will get squeezed
             
             # convert it .txt file and then .bin for huffman
@@ -205,7 +217,7 @@ def test_decode(dec, dataset, bin_out_shape):
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
             ### TODO: fix training data shape:
-            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 256.0
+            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 255.0
             #############
             #bin_out = enc(model_input)
             rec_img = dec(rec_bin_out[idx])
