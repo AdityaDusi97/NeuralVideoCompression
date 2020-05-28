@@ -38,6 +38,8 @@ parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
 opt = parser.parse_args()
 
+device = torch.device('cuda') if cuda and torch.cuda.is_available() else torch.device('cpu')
+
 def train(models, dataset):
     """
     As this is similar to an autoencoder, data just comprises of images
@@ -235,12 +237,12 @@ def test_decode(dec, dataset, bin_out_shape):
 def main():
     dataset = FrameLoader(opt.data_root, opt.batch_size)
     if opt.train_test == 'train':
-        enc = Encoder()
-        dec = Decoder()
+        enc = Encoder().to_device(device)
+        dec = Decoder().to_device(device)
         train((enc, dec), dataset)
     elif opt.train_test == 'test':
-        enc = Encoder()
-        dec = Decoder()
+        enc = Encoder().to_device(device)
+        dec = Decoder().to_device(device)
         test((enc, dec), dataset)
         ## This is the new function, will uncomment later
         """

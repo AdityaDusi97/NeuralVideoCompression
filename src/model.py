@@ -89,6 +89,9 @@ class Encoder(nn.Module):
         out = self.binarizer(x)
         return out
 
+    def to_device(self, device):
+        self.to(device)
+
 
 class Decoder(nn.Module):
     def __init__(self, out_channel=3):
@@ -103,3 +106,6 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         return self.block(x)
+
+    def to_device(self, device):
+        self.to(device)
