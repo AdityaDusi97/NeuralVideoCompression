@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
 from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
-#import pdb
+import pdb
 
 from tensorboardX import SummaryWriter
 from .HuffmanCompression import HuffmanCoding
@@ -22,13 +22,14 @@ parser.add_argument('--logging_root', type=str, required=True,
                     help='path to save checkpoints')
 parser.add_argument('--checkpoint_dir', type=str, default="checkpoint", 
                     help='path to directory with experiments checkpoints ')
+parser.add_argument('--test_output_dir', type=str, help='path to save test output')
 
 # train params
 parser.add_argument('--experiment_name', type=str, required=True, help='name of experiment')
-parser.add_argument('--max_epoch', type=int, default=200, help='number of epochs to train for')
+parser.add_argument('--max_epoch', type=int, default=2, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
-parser.add_argument('--lf', type=int, default=10, help='logging frequency')
-parser.add_argument('--sf', type=int, default=50, help='checkpoints saving frequency')
+parser.add_argument('--lf', type=int, default=50, help='logging frequency')
+parser.add_argument('--sf', type=int, default=200, help='checkpoints saving frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -38,7 +39,7 @@ parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
 opt = parser.parse_args()
 
-device = torch.device('cuda') if cuda and torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cpu')#torch.device('cuda') if torch.cuda.is_available() and cuda else torch.device('cpu')
 
 def train(models, dataset):
     """
@@ -113,6 +114,7 @@ def test(models, dataset):
     """
     #### Setup
     enc, dec = models
+    #pdb.set_trace()
     if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))
@@ -127,6 +129,10 @@ def test(models, dataset):
 
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper
+    out_dir = os.path.join(opt.test_output_dir, opt.experiment_name)
+    if not os.path.exists(out_dir):
+    	os.makedirs(out_dir)
+    out_name = os.path.join(out_dir, "Frame_")
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
             ### TODO: fix training data shape:
@@ -136,7 +142,7 @@ def test(models, dataset):
             rec_img = dec(bin_out)
             
             ssim = getSSIMfromTensor(rec_img, model_input)
-            saveTensorToNpy(rec_img, 'test_rec')
+            saveTensorToNpy(rec_img, out_name + str(idx))
 
             loss = criterion(model_input, rec_img)
             if not idx%10:
@@ -168,6 +174,7 @@ def test_encode(enc, dataset):
 
     print("Test Time encoding frames and getting residuals")
     #criterion = nn.MSELoss()
+    pdb.set_trace()
     residuals_path = os.path.join(dir_name, "residuals")
     if not os.path.exists(residuals_path):
         os.makedirs(residuals_path)
@@ -178,22 +185,25 @@ def test_encode(enc, dataset):
     hCompressor = HuffmanCoding()
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
-            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 255.0
+            if idx==1:
+                break
+            model_input = model_input.type(torch.FloatTensor) / 255.0
             bin_out = enc(model_input).squeeze().cpu().numpy() # assuming batch dimension will get squeezed
             
             # convert it .txt file and then .bin for huffman
             for row in bin_out:
                 np.savetxt(output_file, row)
-
+            print("wrote ", idx , " to file")
         # now, let's do huffman coding
         hCompressor.compress(residual_file, residuals_path)
         # saves things as residual.bin
-
+    print(bin_out.shape)
     print("Finished Huffman Coding residuals")
     # I will also return dimensions as that will be useful at decode time
     return bin_out.shape #tuple
 
 def test_decode(dec, dataset, bin_out_shape):
+    pdb.set_trace()
     if opt.checkpoint_enc is not None:
         dec.load_state_dict(torch.load(opt.checkpoint_dec))
     else:
@@ -214,16 +224,18 @@ def test_decode(dec, dataset, bin_out_shape):
     rec_bin_out = torch.tensor(np.loadtxt(residual_file).reshape(-1, *bin_out_shape)) # all frames
 
     dir_name = 'test_result'
-
+    print("At deocoder end")
     criterion = nn.MSELoss() # from paper
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
             ### TODO: fix training data shape:
-            model_input = model_input.permute(0,3,1,2).type(torch.FloatTensor) / 255.0
+            if idx==1:
+                break
+            model_input = model_input.type(torch.FloatTensor) / 255.0
             #############
             #bin_out = enc(model_input)
             rec_img = dec(rec_bin_out[idx])
-
+            print("decoded ", idx)
             ssim = getSSIMfromTensor(rec_img, model_input)
             saveTensorToNpy(rec_img, 'test_rec')
 
@@ -237,18 +249,18 @@ def test_decode(dec, dataset, bin_out_shape):
 def main():
     dataset = FrameLoader(opt.data_root, opt.batch_size)
     if opt.train_test == 'train':
-        enc = Encoder().to_device(device)
-        dec = Decoder().to_device(device)
+        enc = Encoder()#.to_device(device)
+        dec = Decoder()#.to_device(device)
         train((enc, dec), dataset)
     elif opt.train_test == 'test':
-        enc = Encoder().to_device(device)
-        dec = Decoder().to_device(device)
+        enc = Encoder()#.to_device(device)
+        dec = Decoder()#.to_device(device)
         test((enc, dec), dataset)
         ## This is the new function, will uncomment later
-        """
-        bin_out_shape = test_encode(enc, dataset)
-        test_decode(dec, dataset, bin_out_shape)
-        """
+        # bin_out_shape = test_encode(enc, dataset)
+        # pdb.set_trace()
+        # test_decode(dec, dataset, bin_out_shape)
+        
 
     else:
         print('Unknown Mode')

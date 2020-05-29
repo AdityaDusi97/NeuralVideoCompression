@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 import torchvision
 from glob import glob
-
+from datetime import datetime
 from skimage.metrics import structural_similarity as ssim # perhaps do our own later on lol
-
+from skimage.measure import compare_ssim, compare_mse # familiar with this lol
 
 # no labels
 
@@ -152,3 +152,51 @@ def saveTensorToNpy(tensor, filename):
     np.save(filename+'.npy', npy)
 
     cv2.imwrite(filename+'.png', (npy*128 + 128).astype(int))
+
+def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mode="residual")->None:
+    """
+    mode: residual: to use residual, else does on raw frames
+    """
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out_dir = os.path.join(out_dir, timestamp)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+        print("Making output directory")
+    
+    filePath = os.path.join(out_dir, 'log.txt')
+    file = open(filePath, 'w+')
+    file.write("Video SSIM and MSE")
+    # file.write("Quality: %d" %(quality))
+    
+    #pdb.set_trace()
+    uncomp_frames = sorted(glob(os.path.join(uncomp, '*.png')))
+    decomp_frames = sorted(glob(os.path.join(decomp, '*.png')))
+    residual_frames = None
+    if mode=='residual':
+        residual_frames = sorted(glob(os.path.join(residual_dir, '*.npy')))
+
+    # incase different things for each were used
+    limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
+    residual_im = 0
+    saveName = os.path.join(out_dir, "Frame")
+    for i in range(limit):
+        uncomp_im = cv2.imread(uncomp_frames[i])
+        decomp_im = cv2.imread(decomp_frames[i])
+
+        if mode == 'residual':
+            #pdb.set_trace()
+            residual_im = np.load(residual_frames[i])
+            residual_im = np.transpose(residual_im, axes=(1,0,2))
+            
+        rec_im = decomp_im + residual_im
+        ssim_value = compare_ssim(uncomp_im, rec_im, multichannel=True, full=False, gradient=False)
+        mse_value = compare_mse(uncomp_im, rec_im)
+
+        cv2.imwrite(saveName + str(i) + ".png", rec_im)
+
+        file.write("Frame {}: SSIM {} , MSE {} \n".format(i, ssim_value, mse_value))
+
+    file.close()
+
+
+
