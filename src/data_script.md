@@ -16,7 +16,7 @@ According to this script, the following file stucture will be generated:
 ```
 
 # .png to .mp4
-ffmpeg -r 10  -start_number 0 -i %10d.png -vframes 77 -vcodec libx264 -crf 0 -pix_fmt yuv420p -an -vf "scale=1200:360" uncomp.mp4
+ffmpeg -r 10  -start_number 0 -i %10d.png -vcodec libx264 -crf 0 -pix_fmt yuv420p -an -vf "crop=1200:360:0:0" uncomp.mp4
 - -r: frame rate
 - -start_number: the number where input start. 
 - -i: input
@@ -25,6 +25,8 @@ ffmpeg -r 10  -start_number 0 -i %10d.png -vframes 77 -vcodec libx264 -crf 0 -pi
 - -pix_fmt: tbh, everyone use this so I just followed
 - -an: no acoustic
 - -vf: video filter, to make sure our dimension can be divided by 2
+    - "crop=width:height:start_x:start_y"
+    - "scale=width:height"
 - the last item is output file, instructions after it will be truncated (important!!!)
 
 # .mp4 compressed by h264

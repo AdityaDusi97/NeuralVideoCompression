@@ -1,0 +1,62 @@
+import os
+import cv2
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
+
+def build_list(root_dir, mode):
+    out = []
+    videos = os.listdir(root_dir)
+    for v in videos:
+        v_path = os.path.join(root_dir, v, mode)
+
+        frame_num = []
+        for fn in os.listdir(v_path):
+            if ('pos' in fn) and fn.split('_pos')[0]:
+                frame_num.append(os.path.join(v, mode, fn).split('_pos')[0])
+
+        out.append(frame_num)
+        
+    
+    out = [j for i in out for j in i]
+    return out
+
+class ResidualDataset(Dataset):
+
+    def __init__(self, root_dir, mode, device):
+        """
+        Args:   
+            root_dir (string): Directory with all the images.
+            mode     (string): train/test/eval
+
+            dataset structure:
+                data/v1/train/000_pos.png
+                             /000_neg.png ...
+                       /test /070_pos.png ...
+        """
+        self.root_dir = root_dir 
+        # data
+        self.mode = mode
+        # train
+        self.filelist= build_list(root_dir, mode) 
+        # v1/train/000
+
+        self.device = device
+
+    def __len__(self):
+        return len(self.filelist)
+
+    def __getitem__(self, idx):
+
+        img_name = os.path.join(self.root_dir,
+                                self.filelist[idx])
+        img_pos = cv2.imread(img_name + '_pos.png').astype(np.float32)
+        img_neg = cv2.imread(img_name + '_neg.png').astype(np.float32)
+        img = np.transpose(img_pos - img_neg, axes=(2,0,1)) / 255.0
+
+        img = torch.from_numpy(img).to(device=self.device)
+
+        sample = {'image': img, 'name': img_name}
+
+        return sample

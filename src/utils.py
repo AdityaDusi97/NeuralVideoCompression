@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 import pdb
+import random
 import torch 
 import torch.nn as nn
 import torchvision
@@ -17,14 +18,14 @@ def npy_loader(path):
     return sample
 
 def FrameLoader(data_path, batch_size=4):
-    # For image data
-    #data_path = 'data/train/'
+    ## For image data
+    # data_path = 'data/train/'
     # dataloader = torchvision.datasets.ImageFolder(
     #     root=data_path,
     #     transform=torchvision.transforms.ToTensor()
     # )
 
-    ### TODO: this is only for non-image data
+    ## For non-image data
     dataloader = torchvision.datasets.DatasetFolder(
         root=data_path, loader=npy_loader, 
         extensions=('.npy')
@@ -40,55 +41,8 @@ def FrameLoader(data_path, batch_size=4):
     )
     return dataset
 
-# TODO: Some random prints. Need to fix that
-def Video2Frames(readfile: str, savefile: str) -> None:
-    video = cv2.VideoCapture(readfile)
-    status = True
-    count = 0
-    while status:
-        status, frame = video.read()
-        frame = np.transpose(frame, (1, 0, -1))
-        saveName = os.path.join(savefile, "frame" + str(count) + ".png")
-        cv2.imwrite(saveName, frame)
-        count += 1
-    print("Wrote Frames\n")
 
-
-def Video2Residual(readpath: str, savePath: str, quality: int = 1) -> None:
-    """
-    params: 
-    	readpath: path to video
-    	savePath: path to save a directory with video and logs
-    	qualityL 0-100, 100 being best quality
-    """
-    video = cv2.VideoCapture(readpath)
-    status = True
-    count = 0
-    videoPath = os.path.join(savePath, "data")
-    if not os.path.exists(videoPath):
-        os.makedirs(videoPath)
-        print('Creating output directory')
-    else:
-        print('Rewriting output directory')
-    filePath = os.path.join(savePath, 'log.txt')
-    file = open(filePath, 'w+')
-    file.write("Source Video: " + readpath + "\n")
-    file.write("Quality: %d" %(quality))
-    file.close()
-
-    while status:
-        #pdb.set_trace()
-        status, frame = video.read()
-        encoded, encodedFrame = cv2.imencode('.jpg', frame, [quality, 0])
-        decodedFrame = cv2.imdecode(encodedFrame, cv2.IMREAD_COLOR)
-        saveName = os.path.join(videoPath, "Frame" + str(count) + '.png')
-        residual = frame - decodedFrame
-        count +=1
-        # format in in BGR
-        cv2.imwrite(saveName, residual)
-    print('Wrote Frames')
-
-def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str)->None:
+def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str, fmt='npy')->None:
     """
     Function to go to a file and save residual
     params:
@@ -98,24 +52,33 @@ def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str)->None:
         exp_name: experiment name
     """
     out_dir = os.path.join(out_dir, exp_name)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+    if not os.path.exists(os.path.join(out_dir, 'train')):
+        os.makedirs(os.path.join(out_dir, 'train'))
+    if not os.path.exists(os.path.join(out_dir, 'test')):
+        os.makedirs(os.path.join(out_dir, 'test'))
 
     uncomp_frames = sorted(glob(os.path.join(uncomp, '*.png')))
     decomp_frames = sorted(glob(os.path.join(decomp, '*.png')))
 
     # need some check to make sure we are only calculating between correct frames
     limit = min(len(uncomp_frames), len(decomp_frames))
+    test_idx = random.sample(list(range(limit)), int(limit*0.2))
 
     for idx in range(limit):
-        makeResidual(uncomp_frames[idx], decomp_frames[idx], out_dir)
+        if idx in test_idx:
+            makeResidual(uncomp_frames[idx], decomp_frames[idx], os.path.join(out_dir,'test'), fmt=fmt)
+        else:
+            makeResidual(uncomp_frames[idx], decomp_frames[idx], os.path.join(out_dir,'train'), fmt=fmt)
     
     print("Written all frames")
     
 
 def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360), fmt='npy'):
+
+
     uc = cv2.imread(uncomp).astype(np.float32)
     dc = cv2.imread(decomp).astype(np.float32)
+    # TODO: crop data first so that we don't need to resize
     uc = cv2.resize(uc, img_size).astype(np.int16)
     dc = cv2.resize(dc, img_size).astype(np.int16) # to save space
     res = (uc - dc)
@@ -133,6 +96,8 @@ def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360), 
         cv2.imwrite(os.path.join(out_dir, "{}_pos.png".format(name)), pos.astype(np.uint8))
         cv2.imwrite(os.path.join(out_dir, "{}_neg.png".format(name)), neg.astype(np.uint8))
         print("{}_pos/neg.png saved to {}".format(name, out_dir))
+    else:
+        raise ValueError('wrong format: {}'.foramt(fmt))
 
 
 def getSSIMfromTensor(tensor1, tensor2):
@@ -198,5 +163,53 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
 
     file.close()
 
+####### Function Archive #########
+
+# TODO: Some random prints. Need to fix that
+def Video2Frames(readfile: str, savefile: str) -> None:
+    video = cv2.VideoCapture(readfile)
+    status = True
+    count = 0
+    while status:
+        status, frame = video.read()
+        frame = np.transpose(frame, (1, 0, -1))
+        saveName = os.path.join(savefile, "frame" + str(count) + ".png")
+        cv2.imwrite(saveName, frame)
+        count += 1
+    print("Wrote Frames\n")
+
+def Video2Residual(readpath: str, savePath: str, quality: int = 1) -> None:
+    """
+    params: 
+    	readpath: path to video
+    	savePath: path to save a directory with video and logs
+    	qualityL 0-100, 100 being best quality
+    """
+    video = cv2.VideoCapture(readpath)
+    status = True
+    count = 0
+    videoPath = os.path.join(savePath, "data")
+    if not os.path.exists(videoPath):
+        os.makedirs(videoPath)
+        print('Creating output directory')
+    else:
+        print('Rewriting output directory')
+    filePath = os.path.join(savePath, 'log.txt')
+    file = open(filePath, 'w+')
+    file.write("Source Video: " + readpath + "\n")
+    file.write("Quality: %d" %(quality))
+    file.close()
+
+    while status:
+        #pdb.set_trace()
+        status, frame = video.read()
+        encoded, encodedFrame = cv2.imencode('.jpg', frame, [quality, 0])
+        decodedFrame = cv2.imdecode(encodedFrame, cv2.IMREAD_COLOR)
+        saveName = os.path.join(videoPath, "Frame" + str(count) + '.png')
+        residual = frame - decodedFrame
+        count +=1
+        # format in in BGR
+        cv2.imwrite(saveName, residual)
+    print('Wrote Frames')
 
 

@@ -7,6 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
 from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
+from .dataset import  ResidualDataset
 import pdb
 
 from tensorboardX import SummaryWriter
@@ -39,7 +40,8 @@ parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
 opt = parser.parse_args()
 
-device = torch.device('cpu')#torch.device('cuda') if torch.cuda.is_available() and cuda else torch.device('cpu')
+# device = torch.device('cpu')
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def train(models, dataset):
     """
@@ -78,12 +80,14 @@ def train(models, dataset):
     with torch.autograd.set_detect_anomaly(True):
         print('Beginning training...')
         for epoch in range(opt.start_epoch, opt.max_epoch):
-            for idx, (model_input, _) in enumerate(dataset):
+            # for idx, (sample, _) in enumerate(dataset):
+            for idx, sample in enumerate(dataset):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
-                ### TODO: fix training data shape:
-                model_input = model_input.type(torch.FloatTensor) / 255.0
-                #############
+                # ### TODO: fix training data shape:
+                # model_input = model_input.type(torch.FloatTensor) / 255.0
+                # #############
+                model_input = sample['image']
                 bin_out = enc(model_input)
                 rec_img = dec(bin_out)
                 loss = criterion(model_input, rec_img)
@@ -247,14 +251,24 @@ def test_decode(dec, dataset, bin_out_shape):
 
 
 def main():
-    dataset = FrameLoader(opt.data_root, opt.batch_size)
+
+    # dataset = FrameLoader(opt.data_root, opt.batch_size)
+    dSet = ResidualDataset(opt.data_root, opt.train_test, device)
+    dataset = torch.utils.data.DataLoader( dSet,
+                                           batch_size=opt.batch_size, shuffle=True,
+                                           num_workers=0)
+
     if opt.train_test == 'train':
-        enc = Encoder()#.to_device(device)
-        dec = Decoder()#.to_device(device)
+        enc = Encoder()
+        dec = Decoder()
+        enc.to_device(device)
+        dec.to_device(device)
         train((enc, dec), dataset)
     elif opt.train_test == 'test':
-        enc = Encoder()#.to_device(device)
-        dec = Decoder()#.to_device(device)
+        enc = Encoder()
+        dec = Decoder()
+        enc.to_device(device)
+        dec.to_device(device)
         test((enc, dec), dataset)
         ## This is the new function, will uncomment later
         # bin_out_shape = test_encode(enc, dataset)
