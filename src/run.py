@@ -22,6 +22,7 @@ parser.add_argument('--logging_root', type=str, required=True,
                     help='path to save checkpoints')
 parser.add_argument('--checkpoint_dir', type=str, default="checkpoint", 
                     help='path to directory with experiments checkpoints ')
+parser.add_argument('--test_output_dir', type=str, help='path to save test output')
 
 # train params
 parser.add_argument('--experiment_name', type=str, required=True, help='name of experiment')
@@ -37,6 +38,8 @@ parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
 opt = parser.parse_args()
+
+device = torch.device('cpu')#torch.device('cuda') if torch.cuda.is_available() and cuda else torch.device('cpu')
 
 def train(models, dataset):
     """
@@ -111,6 +114,7 @@ def test(models, dataset):
     """
     #### Setup
     enc, dec = models
+    #pdb.set_trace()
     if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))
@@ -125,6 +129,10 @@ def test(models, dataset):
 
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper
+    out_dir = os.path.join(opt.test_output_dir, opt.experiment_name)
+    if not os.path.exists(out_dir):
+    	os.makedirs(out_dir)
+    out_name = os.path.join(out_dir, "Frame_")
     with torch.no_grad():
         for idx, (model_input, _) in enumerate(dataset):
             ### TODO: fix training data shape:
@@ -134,7 +142,7 @@ def test(models, dataset):
             rec_img = dec(bin_out)
             
             ssim = getSSIMfromTensor(rec_img, model_input)
-            saveTensorToNpy(rec_img, 'test_rec')
+            saveTensorToNpy(rec_img, out_name + str(idx))
 
             loss = criterion(model_input, rec_img)
             if not idx%10:
@@ -241,18 +249,17 @@ def test_decode(dec, dataset, bin_out_shape):
 def main():
     dataset = FrameLoader(opt.data_root, opt.batch_size)
     if opt.train_test == 'train':
-        enc = Encoder()
-        dec = Decoder()
+        enc = Encoder()#.to_device(device)
+        dec = Decoder()#.to_device(device)
         train((enc, dec), dataset)
     elif opt.train_test == 'test':
-        enc = Encoder()
-        dec = Decoder()
-        #test((enc, dec), dataset)
+        enc = Encoder()#.to_device(device)
+        dec = Decoder()#.to_device(device)
+        test((enc, dec), dataset)
         ## This is the new function, will uncomment later
-        
-        bin_out_shape = test_encode(enc, dataset)
-        pdb.set_trace()
-        test_decode(dec, dataset, bin_out_shape)
+        # bin_out_shape = test_encode(enc, dataset)
+        # pdb.set_trace()
+        # test_decode(dec, dataset, bin_out_shape)
         
 
     else:
