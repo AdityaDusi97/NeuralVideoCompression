@@ -113,15 +113,26 @@ def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str)->None:
     print("Written all frames")
     
 
-def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360)):
+def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360), fmt='npy'):
     uc = cv2.imread(uncomp).astype(np.float32)
     dc = cv2.imread(decomp).astype(np.float32)
     uc = cv2.resize(uc, img_size).astype(np.int16)
-    dc = cv2.resize(dc, img_size).astype(np.int16) # to save space...
-    res = np.transpose((uc - dc), axes=(2,0,1))
+    dc = cv2.resize(dc, img_size).astype(np.int16) # to save space
+    res = (uc - dc)
+
     name = (decomp.split('/')[-1]).split('.')[0]
-    np.save(os.path.join(out_dir, "{}.npz".format(name)), res) # TODO: save to pos/neg files seperately???
-    print("{}.npy saved to {}".format(name, out_dir))
+    if fmt == 'npy':
+        res = np.transpose(res, axes=(2,0,1)) # make dim=(C,H,W)
+        np.save(os.path.join(out_dir, "{}.npz".format(name)), res) # TODO: save to pos/neg files seperately???
+        print("{}.npy saved to {}".format(name, out_dir))
+    elif fmt == 'png':
+        pos = np.zeros_like(res)
+        neg = np.zeros_like(res)
+        pos[res >= 0] = (res[res >= 0])
+        neg[res < 0]  = -res[res < 0]
+        cv2.imwrite(os.path.join(out_dir, "{}_pos.png".format(name)), pos.astype(np.uint8))
+        cv2.imwrite(os.path.join(out_dir, "{}_neg.png".format(name)), neg.astype(np.uint8))
+        print("{}_pos/neg.png saved to {}".format(name, out_dir))
 
 
 def getSSIMfromTensor(tensor1, tensor2):
