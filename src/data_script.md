@@ -28,6 +28,12 @@ ffmpeg -r 10  -start_number 0 -i %10d.png -vcodec libx264 -crf 0 -pix_fmt yuv420
     - "crop=width:height:start_x:start_y"
     - "scale=width:height"
 - the last item is output file, instructions after it will be truncated (important!!!)
+- b:v: specifies the target (average) bit rate for the encoder to use
+    - 2M
+- minrate specifies a minimum tolerance to be used
+- maxrate specifies a maximum tolerance. this is only used in conjunction with bufsize
+- bufsize specifies the decoder buffer size, which determines the variability of the output bitrate
+    - The suggestion is to play around with the combinations of -bufsize, starting from the same value like the one specified for the -b:v option (or even half of it) and increasing it until your output bit rate starts jumping too much above/below the specified average bit rate. Then you know you've reached the limit and should lower the -bufsize value a little bit in order to get back on the safe side.
 
 # .mp4 compressed by h264
 ffmpeg -i uncomp.mp4 -an -vcodec libx264 -crf 30 comp.h264
