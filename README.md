@@ -1,8 +1,8 @@
 # Neural Video Compression
 
 ## Requirement
-- Python (duh)
-- PyTorch ??
+- Python 3.7
+- PyTorch 1.4
 
 ## Directory structure
 - src: source code
