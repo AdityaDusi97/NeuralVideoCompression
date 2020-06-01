@@ -1,21 +1,7 @@
-// my ffmpeg only works in base env lol
+// my ffmpeg only works in base env 
 
-```
-According to this script, the following file stucture will be generated:
-    any_path_to_raw_data/0000000000.png
-                         0000000001.png
-                         ...
-                         uncomp.mp4
-                         comp.h264
-                         decomp.mp4
-    decomp.mp4 
-    decomp              /000.png
-                         001.png
-                         ...
 
-```
-
-# .png to .mp4
+### .png to .mp4
 ffmpeg -r 10  -start_number 0 -i %10d.png -vcodec libx264 -crf 0 -pix_fmt yuv420p -an -vf "crop=1200:360:0:0" uncomp.mp4
 - -r: frame rate
 - -start_number: the number where input start. 
@@ -34,38 +20,20 @@ ffmpeg -r 10  -start_number 0 -i %10d.png -vcodec libx264 -crf 0 -pix_fmt yuv420
 - maxrate specifies a maximum tolerance. this is only used in conjunction with bufsize
 - bufsize specifies the decoder buffer size, which determines the variability of the output bitrate
     - The suggestion is to play around with the combinations of -bufsize, starting from the same value like the one specified for the -b:v option (or even half of it) and increasing it until your output bit rate starts jumping too much above/below the specified average bit rate. Then you know you've reached the limit and should lower the -bufsize value a little bit in order to get back on the safe side.
+    - ffmpeg -i input -c:v libx264 -b:v 2M -maxrate 2M -bufsize 1M output.mp4
 
-# .mp4 compressed by h264
+### .mp4 compressed by h264
 ffmpeg -i uncomp.mp4 -an -vcodec libx264 -crf 30 comp.h264
 
-# h264 decode
+### h264 decode
 ffmpeg -framerate 10 -i comp.h264 -vf "fieldorder=bff" decomp.mp4  
 - "fieldorder=bff": this is necessary so that our video won't quiver!
 
-# video to .png frames
+### video to .png frames
 ffmpeg -i decomp.mp4 -framerate 10 -start_number 0 decomp/%03d.png
 
 ### We still need to call makeResidual() in utils.py to generate residual files
 Both raw data ('0000000000.png') and decompressed data ('000.png') needs to be accessible to evaluate SSIM.
-For example:
-data/train /some_number/residual_000.png
-                        ...
-    /test  /some_other#/residual_000.png
-                        ...
-    /raw   /some_sumber/0000000000.png
-                        ...
-                        uncomp.mp4
-           /some_other#/0000000000.png
-                        ...
-                        uncomp.mp4
-    /decomp/some_sumber/000.png
-                        ...
-                        decomp.mp4
-           /some_other#/000.png
-                        ...
-                        decomp.mp4
-
-
 ---
 
 ### gcp

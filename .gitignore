@@ -7,4 +7,6 @@
 **/test
 **/runs
 **/checkpoint
+**/kitti2
+**/raw
 **/log
