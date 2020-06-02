@@ -97,7 +97,7 @@ def train(models, dataset_train, dataset_val):
                 optimizerE.step()
                 if iter % opt.lf == 0:
                     print("Iter %07d   Epoch %03d   loss %0.4f" % (iter, epoch, loss))
-                    writer.add_scalar('train_loss', loss.detach().numpy(), global_step=iter)
+                    writer.add_scalar('train_loss', loss.detach().cpu().numpy(), global_step=iter)
 
                 if iter % opt.sf ==0:
                     torch.save(enc.state_dict(), os.path.join(ckpt_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
@@ -157,6 +157,7 @@ def test(models, dataset, mode='val'):
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
             
+            ssim = 0
             #ssim = getSSIMfromTensor(rec_img, model_input)
             loss = criterion(model_input, rec_img)
             if not idx%10:
@@ -165,7 +166,7 @@ def test(models, dataset, mode='val'):
 
                 if mode == 'val':
                     # only called in the train loop
-                    writer.add_scalar('val_loss', loss.detach().numpy(), global_step=iter)
+                    writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iter)
 
             if mode != 'val':
                 saveTensorToNpy(rec_img, out_name + str(idx))

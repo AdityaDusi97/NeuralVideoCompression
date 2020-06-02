@@ -5,8 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-test_video = 
-    [ 'kitti_2011_09_26_drive_0064_sync', 
+test_video = [ 'kitti_2011_09_26_drive_0064_sync', 
       'kitti_2011_09_26_drive_0020_sync', 
       'kitti_2011_09_26_drive_0014_sync', 
       'kitti_2011_09_26_drive_0013_sync', 
