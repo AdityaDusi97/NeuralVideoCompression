@@ -41,8 +41,15 @@ parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
 opt = parser.parse_args()
 
-# device = torch.device('cpu')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+# set up log directory and # TODO: fix 'train'
+dir_name = opt.experiment_name
+# place to save tensorboard logs
+log_dir = os.path.join(opt.logging_root, dir_name)
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+writer = SummaryWriter(os.path.join(log_dir, "train"))
 
 def train(models, dataset_train, dataset_val):
     """
@@ -57,13 +64,7 @@ def train(models, dataset_train, dataset_val):
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))  
 
-    dir_name = opt.experiment_name #+ 'train' # TODO: Add directory names
     
-    # place to save tensorboard logs
-    log_dir = os.path.join(opt.logging_root, dir_name)
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    writer = SummaryWriter(os.path.join(log_dir, "train"))
 
     # place to save checkpoints
     ckpt_dir = os.path.join(opt.checkpoint_dir, opt.experiment_name)
