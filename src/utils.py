@@ -79,8 +79,8 @@ def makeResidual(uncomp: str, decomp: str, out_dir: str, img_size = (1200,360), 
     uc = cv2.imread(uncomp).astype(np.float32)
     dc = cv2.imread(decomp).astype(np.float32)
     # TODO: crop data first so that we don't need to resize
-    uc = cv2.resize(uc, img_size).astype(np.int16)
-    dc = cv2.resize(dc, img_size).astype(np.int16) # to save space
+    # uc = cv2.resize(uc, img_size).astype(np.int16)
+    # dc = cv2.resize(dc, img_size).astype(np.int16) # to save space
     res = (uc - dc)
 
     name = (decomp.split('/')[-1]).split('.')[0]

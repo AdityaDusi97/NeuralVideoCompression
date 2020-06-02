@@ -23,7 +23,7 @@ while IFS= read -r dir; do
     ffmpeg -nostdin -i uncomp.mp4 -framerate 10 -start_number 0 uncomp/%05d.png
 
     # encode/compress uncomp.mp4 to comp.h264 with specified bitrate/crf
-    ffmpeg -nostdin -i uncomp.mp4 -an -vcodec libx264 -maxrate 2M -bufsize 1M comp.h264
+    ffmpeg -nostdin -i uncomp.mp4 -an -vcodec libx264 -maxrate 0.5M -bufsize 0.25M comp.h264
 
     # decode comp.h264 to decomp.mp4
     ffmpeg -nostdin -framerate 10 -i comp.h264 -vf "fieldorder=bff" decomp.mp4
