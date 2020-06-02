@@ -6,7 +6,7 @@ import torchvision
 import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
-from .utils import FrameLoader, getSSIMfromTensor, saveTensorToNpy
+from .utils import FrameLoader, saveTensorToNpy
 from .dataset import  ResidualDataset
 import pdb
 
@@ -31,6 +31,7 @@ parser.add_argument('--max_epoch', type=int, default=2, help='number of epochs t
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
 parser.add_argument('--lf', type=int, default=50, help='logging frequency')
 parser.add_argument('--sf', type=int, default=200, help='checkpoints saving frequency')
+parser.add_argument('-vf', type=int, default=10, help='val during train frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -43,7 +44,7 @@ opt = parser.parse_args()
 # device = torch.device('cpu')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-def train(models, dataset):
+def train(models, dataset_train, dataset_val):
     """
     As this is similar to an autoencoder, data just comprises of images
     params:
@@ -75,13 +76,13 @@ def train(models, dataset):
     optimizerE = torch.optim.Adam(enc.parameters(), lr=opt.lr)
     optimizerD = torch.optim.Adam(dec.parameters(), lr=opt.lr)
     criterion = nn.MSELoss() # from paper
-    iter = opt.start_epoch * len(dataset)
+    iter = opt.start_epoch * len(dataset_train)
 
     with torch.autograd.set_detect_anomaly(True):
         print('Beginning training...')
         for epoch in range(opt.start_epoch, opt.max_epoch):
             # for idx, (sample, _) in enumerate(dataset):
-            for idx, sample in enumerate(dataset):
+            for idx, sample in enumerate(dataset_train):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
                 # ### TODO: fix training data shape:
@@ -100,7 +101,12 @@ def train(models, dataset):
 
                 if iter % opt.sf ==0:
                     torch.save(enc.state_dict(), os.path.join(ckpt_dir, 'encoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
-                    torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))  
+                    torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
+
+                if iter % opt.vf == 0:
+                    print("Evaluating")
+                    test((enc, dec), dataset_val, mode="val")
+
                 iter +=1
 
     #TODO: Need to complete the code here
@@ -109,7 +115,7 @@ def train(models, dataset):
     torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
 
 
-def test(models, dataset):
+def test(models, dataset, mode='val'):
     """
     As this is similar to an autoencoder, data just comprises of images
     params:
@@ -119,7 +125,9 @@ def test(models, dataset):
     #### Setup
     enc, dec = models
     #pdb.set_trace()
-    if opt.checkpoint_enc is not None and opt.checkpoint_dec is not None :
+    if mode == 'val':
+        print("Eval in train")
+    elif opt.checkpoint_enc is not None and opt.checkpoint_dec is not None:
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))
     else:
@@ -133,25 +141,39 @@ def test(models, dataset):
 
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper
+
+
     out_dir = os.path.join(opt.test_output_dir, opt.experiment_name)
-    if not os.path.exists(out_dir):
-    	os.makedirs(out_dir)
+    if mode != 'val':
+        if not os.path.exists(out_dir):
+        	os.makedirs(out_dir)
     out_name = os.path.join(out_dir, "Frame_")
+    iter =0
     with torch.no_grad():
-        for idx, (model_input, _) in enumerate(dataset):
+        for idx, sample in enumerate(dataset):
             ### TODO: fix training data shape:
-            model_input = model_input.type(torch.FloatTensor) / 255.0
+            model_input = sample['image']
             #############
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
             
-            ssim = getSSIMfromTensor(rec_img, model_input)
-            saveTensorToNpy(rec_img, out_name + str(idx))
-
+            #ssim = getSSIMfromTensor(rec_img, model_input)
             loss = criterion(model_input, rec_img)
             if not idx%10:
                 print(idx)
                 print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
+
+                if mode == 'val':
+                    # only called in the train loop
+                    writer.add_scalar('val_loss', loss.detach().numpy(), global_step=iter)
+
+            if mode != 'val':
+                saveTensorToNpy(rec_img, out_name + str(idx))
+
+            iter +=1
+
+                
+
 
 """
 At test time, out pipeline should actually be split into two stages:
@@ -254,6 +276,8 @@ def main():
 
     # dataset = FrameLoader(opt.data_root, opt.batch_size)
     dSet = ResidualDataset(opt.data_root, opt.train_test, device)
+    # TODO: FU: add test, val, train modes etc for data
+    # Test and val same here
     dataset = torch.utils.data.DataLoader( dSet,
                                            batch_size=opt.batch_size, shuffle=True,
                                            num_workers=0)
@@ -263,13 +287,13 @@ def main():
         dec = Decoder()
         enc.to_device(device)
         dec.to_device(device)
-        train((enc, dec), dataset)
+        train((enc, dec), dataset_train, dataset_test)
     elif opt.train_test == 'test':
         enc = Encoder()
         dec = Decoder()
         enc.to_device(device)
         dec.to_device(device)
-        test((enc, dec), dataset)
+        test((enc, dec), dataset_test, mode="test")
         ## This is the new function, will uncomment later
         # bin_out_shape = test_encode(enc, dataset)
         # pdb.set_trace()
