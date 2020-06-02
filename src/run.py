@@ -31,7 +31,7 @@ parser.add_argument('--max_epoch', type=int, default=2, help='number of epochs t
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
 parser.add_argument('--lf', type=int, default=50, help='logging frequency')
 parser.add_argument('--sf', type=int, default=200, help='checkpoints saving frequency')
-parser.add_argument('-vf', type=int, default=10, help='val during train frequency')
+parser.add_argument('-vf', type=int, default=200, help='val during train frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -106,7 +106,7 @@ def train(models, dataset_train, dataset_val):
 
                 if iter % opt.vf == 0:
                     print("Evaluating")
-                    test((enc, dec), dataset_val, mode="val")
+                    test((enc, dec), dataset_val, mode="val", iteration=iter)
 
                 iter +=1
 
@@ -116,7 +116,7 @@ def train(models, dataset_train, dataset_val):
     torch.save(dec.state_dict(), os.path.join(ckpt_dir, 'decoder-epoch_%d_iter_%s.pth' % (epoch, iter)))
 
 
-def test(models, dataset, mode='val'):
+def test(models, dataset, mode='val', iteration=0):
     """
     As this is similar to an autoencoder, data just comprises of images
     params:
@@ -149,6 +149,7 @@ def test(models, dataset, mode='val'):
         if not os.path.exists(out_dir):
         	os.makedirs(out_dir)
     out_name = os.path.join(out_dir, "Frame_")
+    val_loss = 0
     iter =0
     with torch.no_grad():
         for idx, sample in enumerate(dataset):
@@ -161,18 +162,23 @@ def test(models, dataset, mode='val'):
             ssim = 0
             #ssim = getSSIMfromTensor(rec_img, model_input)
             loss = criterion(model_input, rec_img)
+            val_loss += loss
             if not idx%10:
                 print(idx)
                 print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
 
-                if mode == 'val':
-                    # only called in the train loop
-                    writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iter)
+                # if mode == 'val':
+                #     # only called in the train loop
+                #     writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
 
             if mode != 'val':
                 saveTensorToNpy(rec_img, out_name + str(idx))
 
             iter +=1
+
+        if mode == 'val':
+            val_loss = val_loss.mean()
+            writer.add_scalar('val_loss', val_loss.detach().cpu().numpy(), global_step=iteration)
 
                 
 
