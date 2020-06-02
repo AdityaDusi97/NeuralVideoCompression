@@ -275,20 +275,31 @@ def test_decode(dec, dataset, bin_out_shape):
 def main():
 
     # dataset = FrameLoader(opt.data_root, opt.batch_size)
-    dSet = ResidualDataset(opt.data_root, opt.train_test, device)
-    # TODO: FU: add test, val, train modes etc for data
-    # Test and val same here
-    dataset = torch.utils.data.DataLoader( dSet,
-                                           batch_size=opt.batch_size, shuffle=True,
-                                           num_workers=0)
 
     if opt.train_test == 'train':
+
+        dSet_train = ResidualDataset(opt.data_root, 'train', device)
+        dSet_val  = ResidualDataset(opt.data_root, 'test', device)
+        dataset_train = torch.utils.data.DataLoader( dSet_train,
+                                            batch_size=opt.batch_size, shuffle=True,
+                                            num_workers=0)
+        dataset_val = torch.utils.data.DataLoader( dSet_val,
+                                           batch_size=opt.batch_size, shuffle=True,
+                                           num_workers=0)
         enc = Encoder()
         dec = Decoder()
         enc.to_device(device)
         dec.to_device(device)
-        train((enc, dec), dataset_train, dataset_test)
+        train((enc, dec), dataset_train, dataset_val)
+
     elif opt.train_test == 'test':
+
+        dSet_test  = ResidualDataset(opt.data_root, 'final_test', device)
+        
+        dataset_test = torch.utils.data.DataLoader( dSet_test,
+                                           batch_size=1, shuffle=True,
+                                           num_workers=0)
+
         enc = Encoder()
         dec = Decoder()
         enc.to_device(device)
