@@ -104,8 +104,8 @@ def getSSIMfromTensor(tensor1, tensor2):
     """
         tensor1 and tensor2 are 1) 3 dim tensors or 2) 4 dim tensors with batchSize=1
     """
-    img1 = np.transpose(np.squeeze(tensor1.cpu().numpy()))#, axes=(1,2,0))
-    img2 = np.transpose(np.squeeze(tensor2.cpu().numpy()))#, axes=(1,2,0))
+    img1 = np.transpose(np.squeeze(tensor1.cpu().numpy()), axes=(1,2,0))
+    img2 = np.transpose(np.squeeze(tensor2.cpu().numpy()), axes=(1,2,0))
 
     return ssim(img1, img2,
                 data_range=img2.max() - img2.min(),

@@ -12,11 +12,14 @@ test_video = [ 'kitti_2011_09_26_drive_0064_sync',
       'kitti_2011_09_26_drive_0113_sync', 
       'kitti_2011_09_26_drive_0093_sync', 
       'kitti_2011_09_26_drive_0064_sync' ]
+# 0926, 0064: residential
+# 0926, 0020: residential
+# others: city
 
 def build_list(root_dir, mode):
     out = []
     videos = os.listdir(root_dir)
-    vidoes = [i for i in videos if os.path.isdir(os.path.join(root_dir, i))]
+    videos = [i for i in videos if os.path.isdir(os.path.join(root_dir, i))]
 
     if mode is not 'final_test':
         for v in videos:
@@ -31,9 +34,11 @@ def build_list(root_dir, mode):
         for v in test_video:
             v_path1 = os.path.join(root_dir, v, 'train')
             v_path2 = os.path.join(root_dir, v, 'test')
-            v_path = v_path1 + v_path2
             frame_num = []
-            for fn in os.listdir(v_path):
+            for fn in os.listdir(v_path1):
+                if ('pos' in fn) and fn.split('_pos')[0]:
+                    frame_num.append(os.path.join(v, mode, fn).split('_pos')[0])
+            for fn in os.listdir(v_path2):
                 if ('pos' in fn) and fn.split('_pos')[0]:
                     frame_num.append(os.path.join(v, mode, fn).split('_pos')[0])
             out.append(frame_num)
@@ -60,6 +65,7 @@ class ResidualDataset(Dataset):
         self.mode = mode
         # train
         self.filelist= build_list(root_dir, mode) 
+        print( "dataset mode: {}, length: {}".format(mode, (len(self.filelist))) )
         # v1/train/000
 
         self.device = device
