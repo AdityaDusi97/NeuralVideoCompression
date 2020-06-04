@@ -1,0 +1,11 @@
+python -m src.run --train_test test \
+                  --data_root  data \
+                  --logging_root log \
+                  --checkpoint_dir checkpoints \
+                  --test_output_dir test_out \
+                  --experiment_name first \
+                  --sf 1000 \
+                  --vf 1000 \
+                  --checkpoint_enc checkpoint/test/encoder-epoch_49_iter_40550.pth \
+                  --checkpoint_dec checkpoint/test/decoder-epoch_49_iter_40550.pth \
+                  --batch_size 1

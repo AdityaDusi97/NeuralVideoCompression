@@ -15,6 +15,7 @@ test_video = [ 'kitti_2011_09_26_drive_0064_sync',
 # 0926, 0064: residential
 # 0926, 0020: residential
 # others: city
+test_video = ['kitti_2011_09_26_drive_0014_sync']
 
 def build_list(root_dir, mode):
     out = []
@@ -37,10 +38,10 @@ def build_list(root_dir, mode):
             frame_num = []
             for fn in os.listdir(v_path1):
                 if ('pos' in fn) and fn.split('_pos')[0]:
-                    frame_num.append(os.path.join(v, mode, fn).split('_pos')[0])
+                    frame_num.append(os.path.join(v, 'train', fn).split('_pos')[0])
             for fn in os.listdir(v_path2):
                 if ('pos' in fn) and fn.split('_pos')[0]:
-                    frame_num.append(os.path.join(v, mode, fn).split('_pos')[0])
+                    frame_num.append(os.path.join(v, 'test', fn).split('_pos')[0])
             out.append(frame_num)
         
     
@@ -76,13 +77,14 @@ class ResidualDataset(Dataset):
     def __getitem__(self, idx):
 
         img_name = os.path.join(self.root_dir,
-                                self.filelist[idx])
+                                self.filelist[idx]) # data/v1/train/000
+        # print("img_name: {}".format(img_name))
         img_pos = cv2.imread(img_name + '_pos.png').astype(np.float32)
         img_neg = cv2.imread(img_name + '_neg.png').astype(np.float32)
         img = np.transpose(img_pos - img_neg, axes=(2,0,1)) / 255.0
 
         img = torch.from_numpy(img).to(device=self.device)
 
-        sample = {'image': img, 'name': img_name}
+        sample = {'image': img, 'name': self.filelist[idx]}
 
         return sample

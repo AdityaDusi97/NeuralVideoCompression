@@ -31,7 +31,7 @@ parser.add_argument('--max_epoch', type=int, default=2, help='number of epochs t
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
 parser.add_argument('--lf', type=int, default=50, help='logging frequency')
 parser.add_argument('--sf', type=int, default=200, help='checkpoints saving frequency')
-parser.add_argument('-vf', type=int, default=200, help='val during train frequency')
+parser.add_argument('--vf', type=int, default=200, help='val during train frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -125,8 +125,12 @@ def test(models, dataset, mode='val', iteration=0):
     if mode == 'val':
         print("Eval in train")
     elif opt.checkpoint_enc is not None and opt.checkpoint_dec is not None:
-        enc.load_state_dict(torch.load(opt.checkpoint_enc))
-        dec.load_state_dict(torch.load(opt.checkpoint_dec))
+        if torch.cuda.is_available():
+            enc.load_state_dict(torch.load(opt.checkpoint_enc))
+            dec.load_state_dict(torch.load(opt.checkpoint_dec))
+        else:
+            enc.load_state_dict(torch.load(opt.checkpoint_enc, map_location=torch.device('cpu')))
+            dec.load_state_dict(torch.load(opt.checkpoint_dec, map_location=torch.device('cpu')))
     else:
         print("Have to give checkpoint!")
         return
@@ -144,12 +148,14 @@ def test(models, dataset, mode='val', iteration=0):
     if mode != 'val':
         if not os.path.exists(out_dir):
         	os.makedirs(out_dir)
-    out_name = os.path.join(out_dir, "Frame_")
+    # out_name = os.path.join(out_dir, "Frame_")
     val_loss = 0
     iter =0
     with torch.no_grad():
         for idx, sample in enumerate(dataset):
             model_input = sample['image']
+            input_name = sample['name']
+
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
             loss = criterion(model_input, rec_img)
@@ -163,7 +169,18 @@ def test(models, dataset, mode='val', iteration=0):
                 print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
 
             if mode != 'val':
-                saveTensorToNpy(rec_img, out_name + str(idx))
+                if 'train/' in input_name[0]:
+                    output_name = input_name[0].split('train/')[0]
+                    output_num = input_name[0].split('train/')[1]
+                elif 'test/' in input_name[0]:
+                    output_name = input_name[0].split('test/')[0]
+                    output_num = input_name[0].split('test/')[1]
+                out_dir_name  =  os.path.join(out_dir, output_name)
+
+                if not os.path.exists(out_dir_name):
+        	        os.makedirs(out_dir_name)
+                    
+                saveTensorToNpy(rec_img, os.path.join(out_dir_name, output_num))
 
             iter +=1
 
