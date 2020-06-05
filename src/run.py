@@ -6,7 +6,7 @@ import torchvision
 import numpy as np
 from torch.utils.data import DataLoader
 from .model import Encoder, Decoder
-from .utils import FrameLoader, saveTensorToNpy
+from .utils import FrameLoader, saveTensorToNpy, getSSIMfromTensor
 from .dataset import  ResidualDataset
 import pdb
 
@@ -31,7 +31,7 @@ parser.add_argument('--max_epoch', type=int, default=2, help='number of epochs t
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate, default=0.001')
 parser.add_argument('--lf', type=int, default=50, help='logging frequency')
 parser.add_argument('--sf', type=int, default=200, help='checkpoints saving frequency')
-parser.add_argument('-vf', type=int, default=200, help='val during train frequency')
+parser.add_argument('--vf', type=int, default=200, help='val during train frequency')
 
 # for retraining
 parser.add_argument('--checkpoint_enc', default=None, help='model to load')
@@ -64,8 +64,6 @@ def train(models, dataset_train, dataset_val):
         enc.load_state_dict(torch.load(opt.checkpoint_enc))
         dec.load_state_dict(torch.load(opt.checkpoint_dec))  
 
-    
-
     # place to save checkpoints
     ckpt_dir = os.path.join(opt.checkpoint_dir, opt.experiment_name)
     if not os.path.exists(ckpt_dir):
@@ -86,9 +84,7 @@ def train(models, dataset_train, dataset_val):
             for idx, sample in enumerate(dataset_train):
                 optimizerE.zero_grad()
                 optimizerD.zero_grad()
-                # ### TODO: fix training data shape:
-                # model_input = model_input.type(torch.FloatTensor) / 255.0
-                # #############
+
                 model_input = sample['image']
                 bin_out = enc(model_input)
                 rec_img = dec(bin_out)
@@ -129,8 +125,12 @@ def test(models, dataset, mode='val', iteration=0):
     if mode == 'val':
         print("Eval in train")
     elif opt.checkpoint_enc is not None and opt.checkpoint_dec is not None:
-        enc.load_state_dict(torch.load(opt.checkpoint_enc))
-        dec.load_state_dict(torch.load(opt.checkpoint_dec))
+        if torch.cuda.is_available():
+            enc.load_state_dict(torch.load(opt.checkpoint_enc))
+            dec.load_state_dict(torch.load(opt.checkpoint_dec))
+        else:
+            enc.load_state_dict(torch.load(opt.checkpoint_enc, map_location=torch.device('cpu')))
+            dec.load_state_dict(torch.load(opt.checkpoint_dec, map_location=torch.device('cpu')))
     else:
         print("Have to give checkpoint!")
         return
@@ -138,7 +138,7 @@ def test(models, dataset, mode='val', iteration=0):
     enc.eval()
     dec.eval()
 
-    dir_name = 'test_result' #TODO: Fill in directory name
+    # dir_name = 'test_result' #TODO: Fill in directory name
 
     print('Beginning evaluation...')
     criterion = nn.MSELoss() # from paper
@@ -148,31 +148,39 @@ def test(models, dataset, mode='val', iteration=0):
     if mode != 'val':
         if not os.path.exists(out_dir):
         	os.makedirs(out_dir)
-    out_name = os.path.join(out_dir, "Frame_")
+    # out_name = os.path.join(out_dir, "Frame_")
     val_loss = 0
     iter =0
     with torch.no_grad():
         for idx, sample in enumerate(dataset):
-            ### TODO: fix training data shape:
             model_input = sample['image']
-            #############
+            input_name = sample['name']
+
             bin_out = enc(model_input)
             rec_img = dec(bin_out)
-            
-            ssim = 0
-            #ssim = getSSIMfromTensor(rec_img, model_input)
             loss = criterion(model_input, rec_img)
             val_loss += loss
             if not idx%10:
-                print(idx)
+                if mode == 'val': # only called in the train loop
+                    ssim = 0
+                    writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
+
+                ssim = getSSIMfromTensor(rec_img, model_input)
                 print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
 
-                # if mode == 'val':
-                #     # only called in the train loop
-                #     writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
-
             if mode != 'val':
-                saveTensorToNpy(rec_img, out_name + str(idx))
+                if 'train/' in input_name[0]:
+                    output_name = input_name[0].split('train/')[0]
+                    output_num = input_name[0].split('train/')[1]
+                elif 'test/' in input_name[0]:
+                    output_name = input_name[0].split('test/')[0]
+                    output_num = input_name[0].split('test/')[1]
+                out_dir_name  =  os.path.join(out_dir, output_name)
+
+                if not os.path.exists(out_dir_name):
+        	        os.makedirs(out_dir_name)
+                    
+                saveTensorToNpy(rec_img, os.path.join(out_dir_name, output_num))
 
             iter +=1
 
@@ -218,10 +226,10 @@ def test_encode(enc, dataset):
 
     hCompressor = HuffmanCoding()
     with torch.no_grad():
-        for idx, (model_input, _) in enumerate(dataset):
+        for idx, sample in enumerate(dataset):
             if idx==1:
                 break
-            model_input = model_input.type(torch.FloatTensor) / 255.0
+            model_input = sample['image']
             bin_out = enc(model_input).squeeze().cpu().numpy() # assuming batch dimension will get squeezed
             
             # convert it .txt file and then .bin for huffman
@@ -261,16 +269,14 @@ def test_decode(dec, dataset, bin_out_shape):
     print("At deocoder end")
     criterion = nn.MSELoss() # from paper
     with torch.no_grad():
-        for idx, (model_input, _) in enumerate(dataset):
-            ### TODO: fix training data shape:
+        for idx, sample in enumerate(dataset):
             if idx==1:
                 break
-            model_input = model_input.type(torch.FloatTensor) / 255.0
-            #############
+            model_input = sample['image']
             #bin_out = enc(model_input)
             rec_img = dec(rec_bin_out[idx])
             print("decoded ", idx)
-            ssim = getSSIMfromTensor(rec_img, model_input)
+            ssim = getSSIMfromTensor(rec_img, model_input) # TODO SSIM should compare with reconstructed image
             saveTensorToNpy(rec_img, 'test_rec')
 
             loss = criterion(model_input, rec_img)
@@ -281,8 +287,6 @@ def test_decode(dec, dataset, bin_out_shape):
 
 
 def main():
-
-    # dataset = FrameLoader(opt.data_root, opt.batch_size)
 
     if opt.train_test == 'train':
 

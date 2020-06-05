@@ -9,4 +9,6 @@
 **/checkpoint
 **/kitti2
 **/raw
+**/out
+**/test_out
 **/log
