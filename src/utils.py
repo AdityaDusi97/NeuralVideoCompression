@@ -110,9 +110,11 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
     residual_frames = None
     if mode=='residual':
         residual_frames = sorted(glob(os.path.join(residual_dir, '*.npy')))
-
-    # incase different things for each were used
-    limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
+        # incase different things for each were used
+        limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
+    else:
+        limit = min(len(uncomp_frames), len(decomp_frames))
+        
     residual_im = 0
     saveName = os.path.join(out_dir, "Frame")
     for i in range(limit):
@@ -121,10 +123,10 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
 
         if mode == 'residual':
             #pdb.set_trace()
-            residual_im = np.load(residual_frames[i])
-            residual_im = np.transpose(residual_im, axes=(1,2,0))
+            residual_im = np.load(residual_frames[i]) * 255.0
+            residual_im = np.transpose(residual_im.astype(np.int32), axes=(1,2,0))
             
-        rec_im = decomp_im + residual_im
+        rec_im = np.clip(decomp_im + residual_im, 0, 255)
         ssim_value = compare_ssim(uncomp_im, rec_im, multichannel=True, full=False, gradient=False)
         mse_value = compare_mse(uncomp_im, rec_im)
 
