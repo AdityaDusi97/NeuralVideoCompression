@@ -110,9 +110,11 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
     residual_frames = None
     if mode=='residual':
         residual_frames = sorted(glob(os.path.join(residual_dir, '*.npy')))
-
-    # incase different things for each were used
-    limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
+        # incase different things for each were used
+        limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
+    else:
+        limit = min(len(uncomp_frames), len(decomp_frames))
+        
     residual_im = 0
     saveName = os.path.join(out_dir, "Frame")
     for i in range(limit):
