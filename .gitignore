@@ -4,6 +4,9 @@
 **/v_data
 .ipynb_checkpoints/
 **/__pycache__
+**/test_out
+**/out
+**/out_norec
 **/test
 **/runs
 **/checkpoint

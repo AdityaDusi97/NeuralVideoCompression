@@ -41,4 +41,9 @@ while IFS= read -r dir; do
 done < "dir.txt"
 
 rm dir.txt
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> c56431305cb3f81b1d343cf10fb57387c40b6535
 
