@@ -40,5 +40,7 @@ while IFS= read -r dir; do
 
 done < "dir.txt"
 
+rm dir.txt
+
 
 

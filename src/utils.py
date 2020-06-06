@@ -11,6 +11,13 @@ from datetime import datetime
 from skimage.metrics import structural_similarity as ssim # perhaps do our own later on lol
 from skimage.measure import compare_ssim, compare_mse # familiar with this lol
 
+def genResidualDataset(raw_path, data_path, uncomp='uncomp', decomp='decomp'):
+    for dir in os.listdir(raw_path):
+        p = os.path.join(raw_path, dir)
+        if os.path.isdir(p):
+            kittiResidual(os.path.join(p, uncomp), 
+                          os.path.join(p, decomp), data_path, dir, 'png')
+
 
 def kittiResidual(uncomp: str, decomp: str, out_dir:str, exp_name:str, fmt='npy')->None:
     """
@@ -114,7 +121,7 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
         limit = min(len(uncomp_frames), len(decomp_frames), len(residual_frames))
     else:
         limit = min(len(uncomp_frames), len(decomp_frames))
-        
+
     residual_im = 0
     saveName = os.path.join(out_dir, "Frame")
     for i in range(limit):
