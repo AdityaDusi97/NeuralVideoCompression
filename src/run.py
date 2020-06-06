@@ -112,7 +112,8 @@ def train(models, dataset_train, dataset_val):
                 if iter % opt.vf == 0:
                     print("Evaluating")
                     test((enc, dec), dataset_val, mode="val", iteration=iter)
-
+                    enc.train()
+                     dec.train()
                 iter +=1
             scheduleD.step()
             scheduleE.step()
