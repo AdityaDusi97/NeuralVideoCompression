@@ -1,0 +1,2 @@
+# Here, there is information about what bitrate was used and with what buf size
+-maxrate 0.05M -bufsize 0.1M
