@@ -39,6 +39,10 @@ parser.add_argument('--checkpoint_dec', default=None, help='model to load')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--batch_size', type=int, default=4, help='start epoch')
 
+# for lr annealing
+parser.add_argument('--lr_update_freq', type=int, default=5, help='Decay every N epochs')
+parser.add_argument('--lr_gamma', type=float, default=0.5, help='factor to anneal by')
+
 opt = parser.parse_args()
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -74,6 +78,11 @@ def train(models, dataset_train, dataset_val):
     dec.train()
     optimizerE = torch.optim.Adam(enc.parameters(), lr=opt.lr)
     optimizerD = torch.optim.Adam(dec.parameters(), lr=opt.lr)
+    scheduleE = torch.optim.scheduler.StepLR(optimizerE, step_size = opt.lr_update_freq, 
+                                            gamma = opt.lr_gamma)
+    scheduleD = torch.optim.scheduler.StepLR(optimizerD, step_size = opt.lr_update_freq, 
+                                            gamma = opt.lr_gamma)
+
     criterion = nn.MSELoss() # from paper
     iter = opt.start_epoch * len(dataset_train)
 
@@ -105,6 +114,8 @@ def train(models, dataset_train, dataset_val):
                     test((enc, dec), dataset_val, mode="val", iteration=iter)
 
                 iter +=1
+            scheduleD.step()
+            scheduleE.step()
 
     #TODO: Need to complete the code here
     print("Finished Training")
@@ -161,12 +172,12 @@ def test(models, dataset, mode='val', iteration=0):
             loss = criterion(model_input, rec_img)
             val_loss += loss
             if not idx%10:
-                if mode == 'val': # only called in the train loop
-                    ssim = 0
-                    writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
+                # if mode == 'val': # only called in the train loop
+                #     #ssim = 0
+                #     writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
 
-                ssim = getSSIMfromTensor(rec_img, model_input)
-                print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss, ssim))
+                #ssim = getSSIMfromTensor(rec_img, model_input)
+                print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss))
 
             if mode != 'val':
                 if 'train/' in input_name[0]:
@@ -185,7 +196,7 @@ def test(models, dataset, mode='val', iteration=0):
             iter +=1
 
         if mode == 'val':
-            val_loss = val_loss.mean()
+            val_loss = val_loss/iter # avg loss
             writer.add_scalar('val_loss', val_loss.detach().cpu().numpy(), global_step=iteration)
 
                 
