@@ -78,9 +78,9 @@ def train(models, dataset_train, dataset_val):
     dec.train()
     optimizerE = torch.optim.Adam(enc.parameters(), lr=opt.lr)
     optimizerD = torch.optim.Adam(dec.parameters(), lr=opt.lr)
-    scheduleE = torch.optim.scheduler.StepLR(optimizerE, step_size = opt.lr_update_freq, 
+    scheduleE = torch.optim.lr_scheduler.StepLR(optimizerE, step_size = opt.lr_update_freq, 
                                             gamma = opt.lr_gamma)
-    scheduleD = torch.optim.scheduler.StepLR(optimizerD, step_size = opt.lr_update_freq, 
+    scheduleD = torch.optim.lr_scheduler.StepLR(optimizerD, step_size = opt.lr_update_freq, 
                                             gamma = opt.lr_gamma)
 
     criterion = nn.MSELoss() # from paper
@@ -178,7 +178,7 @@ def test(models, dataset, mode='val', iteration=0):
                 #     writer.add_scalar('val_loss', loss.detach().cpu().numpy(), global_step=iteration)
 
                 #ssim = getSSIMfromTensor(rec_img, model_input)
-                print("Iter %07d  loss %0.4f ssim %0.6f" % (idx, loss))
+                print("Iter %07d  loss %0.4f" % (idx, loss))
 
             if mode != 'val':
                 if 'train/' in input_name[0]:
