@@ -15,7 +15,7 @@ test_video = [ 'kitti_2011_09_26_drive_0064_sync',
 # 0926, 0064: residential
 # 0926, 0020: residential
 # others: city
-test_video = ['kitti_2011_09_26_drive_0014_sync']
+# test_video = ['kitti_2011_09_26_drive_0014_sync']
 
 def build_list(root_dir, mode):
     out = []
