@@ -12,23 +12,35 @@
 
 ## Train command
 ```
-python -m src.run --train_test train --data_root data/<data_name>/train --logging_root log --checkpoint_dir checkpoints --experiment_name <experiment_name>
+./train.sh
 ```
 
 ## Test command
 ```
-python -m src.run --train_test test --data_root data/<data_name>/test --logging_root log --checkpoint_enc checkpoints/<exp_name>/encoder-epoch_0_iter_0.pth --checkpoint_dec checkpoints/<exp_name>/decoder-epoch_0_iter_0.pth  --experiment_name oo  
+./eval.sh
 ```
-There could be a better way to parse the checkpoints but I will fix it later
+
 
 ## Preparing dataset
-There are useful functions in utils.py. Use the following commands in python:
+There are useful functions in utils.py. Place the video frames in data/. Use the following commands in python:
 ```
 import utils
-utils.kittiResidual(<path_to_uncompressed>, <path_to_decompressed>, "NeuralVideoCompression/data", <dataset_name>)
+import os
+x = os.listdir('../raw/')
+p = '../raw/'
+for dir in x:
+	utils.kittiResidual(p + dir + '/uncomp',p + dir + '/decomp', '../data/<name>', dir, 'png')
 ```
 
-The example command I used is:
+## Command to evaluate MSE and SSIM
+Functions are again provided in utils.py.
 ```
-utils.kittiResidual("/Users/aditya/Documents/cs348k/Project/NeuralVideoCompression/raw_data/2011_09_26/2011_09_26_drive_0001_sync/image_00/data", "/Users/aditya/Documents/cs348k/Project/NeuralVideoCompression/raw_data/2011_09_26/2011_09_26_drive_0001_sync/image_00/data/decomp", "/Users/aditya/Documents/cs348k/Project/NeuralVideoCompression/data", "kitti1")
+import utils
+utils.metricCompute(<path to uncomp>, <path to decomp>, '../<output_dir name>', '<path to test output>')
 ```
+
+The example command I use is:
+```
+utils.metricCompute('/home/ubuntu/NeuralVideoCompression/raw/kitti_2011_09_26_drive_0014_sync/uncomp', '/home/ubuntu/NeuralVideoCompression/raw/kitti_2011_09_26_drive_0014_sync/decomp', '../eval', '../test_out/0_01M/kitti_2011_09_26_drive_0014_sync')
+```
+
