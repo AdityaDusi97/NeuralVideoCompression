@@ -5,17 +5,20 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-test_video = [ 'kitti_2011_09_26_drive_0064_sync', 
-      'kitti_2011_09_26_drive_0020_sync', 
-      'kitti_2011_09_26_drive_0014_sync', 
-      'kitti_2011_09_26_drive_0013_sync', 
-      'kitti_2011_09_26_drive_0113_sync', 
-      'kitti_2011_09_26_drive_0093_sync', 
-      'kitti_2011_09_26_drive_0064_sync' ]
+test_video = [ 
+                'kitti_2011_09_26_drive_0020_sync',
+                'kitti_2011_09_26_drive_0064_sync', 
+                'kitti_2011_09_26_drive_0014_sync', 
+                'kitti_2011_09_26_drive_0013_sync', 
+                'kitti_2011_09_26_drive_0113_sync', 
+                'kitti_2011_09_26_drive_0093_sync', 
+
+                'kitti_2011_09_28_drive_0053_sync'
+             ]
 # 0926, 0064: residential
 # 0926, 0020: residential
 # others: city
-# test_video = ['kitti_2011_09_26_drive_0014_sync']
+# test_video = ['kitti_2011_09_26_drive_0020_sync']
 
 def build_list(root_dir, mode):
     out = []

@@ -96,19 +96,23 @@ def saveTensorToNpy(tensor, filename):
 
     # cv2.imwrite(filename+'.png', (npy*128 + 128).astype(int))
 
-def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mode="residual")->None:
+def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mode="residual", info=None)->None:
     """
     mode: residual: to use residual, else does on raw frames
     """
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_dir = os.path.join(out_dir, timestamp)
+    if info is None:
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        out_dir = os.path.join(out_dir, timestamp)
+    else:
+        out_dir = os.path.join(out_dir, info)
+
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
         print("Making output directory")
     
     filePath = os.path.join(out_dir, 'log.txt')
     file = open(filePath, 'w+')
-    file.write("Video SSIM and MSE")
+    file.write("Video SSIM and MSE\n")
     # file.write("Quality: %d" %(quality))
     
     #pdb.set_trace()
@@ -124,6 +128,9 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
 
     residual_im = 0
     saveName = os.path.join(out_dir, "Frame")
+
+    avg_ssim = 0
+    avg_mse = 0
     for i in range(limit):
         uncomp_im = cv2.imread(uncomp_frames[i])
         decomp_im = cv2.imread(decomp_frames[i])
@@ -137,10 +144,15 @@ def metricCompute(uncomp: str, decomp: str, out_dir: str, residual_dir: str, mod
         ssim_value = compare_ssim(uncomp_im, rec_im, multichannel=True, full=False, gradient=False)
         mse_value = compare_mse(uncomp_im, rec_im)
 
-        cv2.imwrite(saveName + str(i) + ".png", rec_im)
+        avg_ssim += ssim_value
+        avg_mse += ssim_value
+
+        if mode == 'residual':
+            cv2.imwrite(saveName + str(i) + ".png", rec_im)
 
         file.write("Frame {}: SSIM {} , MSE {} \n".format(i, ssim_value, mse_value))
 
+    file.write("Average: SSIM {} , MSE {} \n".format(avg_ssim/limit, avg_mse/limit))
     file.close()
 
 ####### Function Archive #########
