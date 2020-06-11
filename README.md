@@ -3,6 +3,8 @@ Our implementation of the paper <em>Learning Binary Residual Representations for
 
 ![Cover Pic](https://github.com/AdityaDusi97/NeuralVideoCompression/blob/master/Final_pic.png)
 
+The first frame is from our pipeline while the second is from naive H.264. 
+
 ## Requirement
 - Python 3.6 +
 - PyTorch 1.4
