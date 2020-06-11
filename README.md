@@ -1,7 +1,7 @@
 # Neural Video Compression
 Our implementation of the paper <em>Learning Binary Residual Representations for Domain-specific Video Streaming by Yi-Hsuan et. al</em>. This work was done as a course project for CS348K: Visual Computing Systems at Stanford University, Spring 2020. Our report can be found here: https://drive.google.com/file/d/1sUxpa0e8DkQEYD929XsKOIJyHnqAE3f4/view?usp=sharing.
 
-![Cover Pic](https://github.com/AdityaDusi97/NeuralVideoCompression/blob/master/Final_Pic.png)
+![Cover Pic](https://github.com/AdityaDusi97/NeuralVideoCompression/blob/master/Final_pic.png)
 
 ## Requirement
 - Python 3.6 +
