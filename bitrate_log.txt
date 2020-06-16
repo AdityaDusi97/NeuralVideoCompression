@@ -1,2 +1,19 @@
 # Here, there is information about what bitrate was used and with what buf size
 -maxrate 0.05M -bufsize 0.1M
+# for this birate, residual bitrate for files
+kitti_2011_09_26_drive_0020_sync: 482241.0465116279 bps
+kitti_2011_09_26_drive_0064_sync: 547855.9649122807 bps
+kitti_2011_09_26_drive_0014_sync: 520448.1210191083 bps
+kitti_2011_09_26_drive_0013_sync: 503441.25 bps
+kitti_2011_09_26_drive_0113_sync: 484284.2528735632 bps
+kitti_2011_09_26_drive_0093_sync: 535245.6581986144 bps
+kitti_2011_09_28_drive_0053_sync: 467050.4411764706 bps
+
+# for 0.1M
+kitti_2011_09_26_drive_0020_sync: 481747.20930232556 bps
+kitti_2011_09_26_drive_0064_sync: 549285.649122807 bps
+kitti_2011_09_26_drive_0014_sync: 521485.7643312102 bps
+kitti_2011_09_26_drive_0013_sync: 503558.05555555556 bps
+kitti_2011_09_26_drive_0113_sync: 83078.8505747126 bps
+kitti_2011_09_26_drive_0093_sync: 538731.2471131639 bps
+kitti_2011_09_28_drive_0053_sync: 466686.76470588235 bps
